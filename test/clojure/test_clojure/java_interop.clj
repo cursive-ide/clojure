@@ -10,7 +10,9 @@
 
 
 (ns clojure.test-clojure.java-interop
-  (:use clojure.test))
+  (:use clojure.test clojure.interop
+        [clojure.test-helper :only (should-not-reflect)])
+  (:import java.io.Reader))
 
 ; http://clojure.org/java_interop
 ; http://clojure.org/compilation
@@ -534,3 +536,24 @@
   (is (= (char \a) \a)))
 
 ;; Note: More coercions in numbers.clj
+
+(defclass C1 [lock]
+  Reader [lock]
+  (read [_] 1))
+
+(deftest test-defclass
+  (is (= 1 (.read (C1. (Object.)))))
+  (is (clojure.interop/extend-class
+       javax.swing.JPanel []
+       (paintComponent [this g]
+                       (.paintComponent ^javax.swing.JPanel this ^java.awt.Graphics g))))
+  (should-not-reflect
+   (fn [^java.awt.Graphics g]
+                        (clojure.interop/extend-class
+                         javax.swing.JPanel []
+                         (paintComponent [this _]
+                                         (.paintComponent ^javax.swing.JPanel this g)))))
+  (should-not-reflect
+   (.read (clojure.interop/extend-class
+           java.io.Reader []
+           (read [_] 1)))))
